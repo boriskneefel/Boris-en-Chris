@@ -19,6 +19,8 @@ class DataExporter {
         const lines = [
             '# Schermanalyse – Werkinstructies',
             '',
+            patterns.some(p => p.aiInstruction) ? '_Bevat AI-gegenereerde werkinstructies (Claude)_' : '_Bevat voorlopige instructies — gebruik "Genereer met AI" voor uitgebreidere versies_',
+            '',
             `**Geëxporteerd:** ${new Date().toLocaleString('nl-NL')}`,
             `**Frames geanalyseerd:** ${stats.frameCount}`,
             `**Segmenten:** ${stats.segmentCount}`,
@@ -58,9 +60,14 @@ class DataExporter {
             lines.push('');
             lines.push('### Werkinstructie');
             lines.push('');
-            lines.push('```');
-            lines.push(p.workInstruction);
-            lines.push('```');
+            const instruction = p.aiInstruction || p.workInstruction;
+            if (p.aiInstruction) {
+                lines.push(p.aiInstruction);
+            } else {
+                lines.push('```');
+                lines.push(instruction);
+                lines.push('```');
+            }
             lines.push('');
             lines.push('---');
             lines.push('');

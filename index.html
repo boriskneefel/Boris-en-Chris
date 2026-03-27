@@ -5,74 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schermanalyse Tool</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Tesseract.js — OCR runs locally in browser via WebAssembly -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 <body>
 <div id="app">
 
-    <!-- Header -->
     <header>
         <h1>Schermanalyse Tool</h1>
-        <p class="subtitle">Detecteert repetitieve handelingen en automatiseringskansen via visuele patroonherkenning</p>
+        <p class="subtitle">Herkent terugkerende werkpatronen via schermopname en genereert leesbare werkinstructies met AI</p>
     </header>
 
-    <!-- Privacy notice -->
     <div class="bar bar-privacy">
-        🔒 Alle verwerking vindt lokaal in je browser plaats — geen uploads, geen tracking, geen cloudverbinding.
+        🔒 Alles wordt lokaal in je browser verwerkt — geen uploads, geen tracking, geen cloudverbinding.
+        OCR en AI-aanroepen verlaten je scherm pas als jij op "Genereer" klikt.
     </div>
 
-    <!-- Capabilities notice -->
     <div class="bar bar-caps">
-        <strong>Wat dit tool kan zien:</strong> visuele schermveranderingen en volgorde van schermstates &nbsp;|&nbsp;
-        <strong>Niet betrouwbaar:</strong> exacte muisklikken &amp; toetsaanslagen buiten browsercontext
+        <strong>Zichtbaar voor de tool:</strong> wat er op je scherm staat (tekst via OCR, schermvolgorde)
+        &nbsp;|&nbsp;
+        <strong>Niet zichtbaar:</strong> exacte muisklikken, wachtwoorden, toetsaanslagen buiten het beeld
     </div>
 
-    <!-- Main layout -->
     <div class="main-layout">
 
         <!-- ── LEFT PANEL ── -->
         <div class="left-panel">
 
-            <!-- Preview + controls -->
             <div class="card">
                 <h2>Schermopname</h2>
-
                 <div class="preview-container">
                     <video id="previewVideo" autoplay muted playsinline></video>
                     <div id="noPreview" class="no-preview">
                         <p>Geen opname actief</p>
-                        <p class="hint">Klik op "Start analyse" om je scherm te delen en de analyse te starten</p>
+                        <p class="hint">Klik op "Start analyse" om je scherm te delen</p>
                     </div>
                 </div>
-
                 <div class="controls">
-                    <button id="btnStart" class="btn btn-primary">▶ Start schermanalyse</button>
+                    <button id="btnStart" class="btn btn-primary">▶ Start analyse</button>
                     <button id="btnStop"  class="btn btn-danger" disabled>■ Stop analyse</button>
                 </div>
-
                 <div class="settings">
                     <label>
                         Sample interval:
                         <select id="sampleInterval">
-                            <option value="1000">Elke 1 seconde (nauwkeurig)</option>
-                            <option value="2000" selected>Elke 2 seconden (standaard)</option>
-                            <option value="5000">Elke 5 seconden (rustiger)</option>
+                            <option value="1000">Elke 1 seconde</option>
+                            <option value="2000" selected>Elke 2 seconden</option>
+                            <option value="5000">Elke 5 seconden</option>
                         </select>
                     </label>
                     <label>
                         Veranderingsdrempel:
                         <select id="changeThreshold">
-                            <option value="5">Gevoelig — 5% verschil</option>
-                            <option value="10" selected>Normaal — 10% verschil</option>
-                            <option value="20">Grof — 20% verschil</option>
+                            <option value="5">Gevoelig (5%)</option>
+                            <option value="10" selected>Normaal (10%)</option>
+                            <option value="20">Grof (20%)</option>
                         </select>
                     </label>
                 </div>
             </div>
 
-            <!-- Live status -->
+            <!-- AI & OCR Settings -->
+            <div class="card">
+                <h2>AI Instellingen</h2>
+                <p class="settings-intro">
+                    Voer je Claude API-sleutel in om na de analyse automatisch leesbare werkinstructies te genereren.
+                    De sleutel wordt alleen in je browser opgeslagen (sessie) en nooit verstuurd naar andere servers.
+                </p>
+                <div class="api-key-row">
+                    <input type="password" id="apiKeyInput"
+                        placeholder="sk-ant-api03-..."
+                        autocomplete="off" spellcheck="false">
+                    <button id="btnSaveKey" class="btn btn-sm btn-accent">Opslaan</button>
+                </div>
+                <div id="apiKeyStatus" class="key-status"></div>
+                <p class="settings-hint">
+                    API-sleutel ophalen: <a href="https://console.anthropic.com/account/keys" target="_blank" rel="noopener">console.anthropic.com</a>
+                </p>
+                <div class="ocr-row">
+                    <span class="ocr-label">OCR-status:</span>
+                    <span id="ocrStatus" class="ocr-status ocr-waiting">Wacht op analyse start…</span>
+                </div>
+                <p class="settings-hint">OCR leest tekst van je scherm om schermen herkenbaar te benoemen (bijv. "Gmail Inbox" i.p.v. "Schermstatus 1").</p>
+            </div>
+
+            <!-- Live Status -->
             <div class="card">
                 <h2>Live Status</h2>
-
                 <div class="status-item">
                     <span class="label">Status</span>
                     <span id="statusText" class="value status-idle">Inactief</span>
@@ -97,7 +116,6 @@
                     <span class="label">Herkende patronen</span>
                     <span id="patternCount" class="value">0</span>
                 </div>
-
                 <div class="status-indicator">
                     <div id="activityDot" class="dot dot-idle"></div>
                     <span id="activityText">Wachten op schermopname…</span>
@@ -106,7 +124,7 @@
 
             <!-- Export -->
             <div class="card export-section">
-                <h2>Exporteer resultaten</h2>
+                <h2>Exporteer</h2>
                 <div class="export-buttons">
                     <button id="btnExportJSON" class="btn btn-export" disabled>↓ Volledige analyse (JSON)</button>
                     <button id="btnExportMD"   class="btn btn-export" disabled>↓ Werkinstructies (Markdown)</button>
@@ -120,44 +138,37 @@
         <div class="right-panel">
             <div class="card results-card">
 
-                <!-- Tabs -->
                 <div class="tabs">
-                    <button class="tab active" data-tab="patterns">
-                        Patronen <span id="tabBadgePatterns"></span>
-                    </button>
+                    <button class="tab active" data-tab="patterns">Patronen</button>
                     <button class="tab" data-tab="automation">Automatisering</button>
                     <button class="tab" data-tab="instructions">Werkinstructies</button>
                 </div>
 
-                <!-- Tab: Patterns -->
                 <div id="tab-patterns" class="tab-content active">
                     <div id="patternsSection">
                         <div class="empty-state">
                             <p>Nog geen patronen gedetecteerd.</p>
-                            <p class="hint">
-                                Start de analyse en voer dezelfde handelingen meerdere keren uit.
-                                Minimaal 2 herhalingen zijn nodig; voor betrouwbare resultaten: 3–5 herhalingen.
-                            </p>
+                            <p class="hint">Voer dezelfde handelingen meerdere keren herhaalbaar uit. Minimaal 2–3 herhalingen zijn nodig voor patroonherkenning.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab: Automation -->
                 <div id="tab-automation" class="tab-content">
                     <div id="automationSection">
                         <div class="empty-state">
                             <p>Nog geen automatiseringskansen.</p>
-                            <p class="hint">Worden zichtbaar zodra repetitieve patronen zijn herkend.</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Tab: Instructions -->
                 <div id="tab-instructions" class="tab-content">
                     <div id="instructionsSection">
                         <div class="empty-state">
-                            <p>Nog geen werkinstructies gegenereerd.</p>
-                            <p class="hint">Worden automatisch aangemaakt op basis van gedetecteerde patronen.</p>
+                            <p>Nog geen werkinstructies.</p>
+                            <p class="hint">
+                                Zodra patronen herkend zijn, klik je op <strong>"✨ Genereer met AI"</strong>
+                                voor een volledige, leesbare instructie zoals het Wurth-voorbeeld.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -165,15 +176,13 @@
             </div>
         </div>
 
-    </div><!-- /.main-layout -->
+    </div>
 
     <!-- Hidden canvases for analysis -->
-    <!-- hashCanvas: 16×16 — used for perceptual hashing -->
-    <!-- analysisCanvas: 320×180 — reserved for future OCR integration -->
     <canvas id="hashCanvas"     class="hidden" width="16"  height="16"></canvas>
     <canvas id="analysisCanvas" class="hidden" width="320" height="180"></canvas>
 
-</div><!-- /#app -->
+</div>
 
 <script src="analyzer.js"></script>
 <script src="exporter.js"></script>
