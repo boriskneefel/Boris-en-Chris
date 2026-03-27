@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schermanalyse Tool</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+    <!-- Header -->
+    <header>
+        <h1>Schermanalyse Tool</h1>
+        <p class="subtitle">Detecteert repetitieve handelingen en automatiseringskansen via visuele patroonherkenning</p>
+    </header>
+
+    <!-- Privacy notice -->
+    <div class="bar bar-privacy">
+        🔒 Alle verwerking vindt lokaal in je browser plaats — geen uploads, geen tracking, geen cloudverbinding.
+    </div>
+
+    <!-- Capabilities notice -->
+    <div class="bar bar-caps">
+        <strong>Wat dit tool kan zien:</strong> visuele schermveranderingen en volgorde van schermstates &nbsp;|&nbsp;
+        <strong>Niet betrouwbaar:</strong> exacte muisklikken &amp; toetsaanslagen buiten browsercontext
+    </div>
+
+    <!-- Main layout -->
+    <div class="main-layout">
+
+        <!-- ── LEFT PANEL ── -->
+        <div class="left-panel">
+
+            <!-- Preview + controls -->
+            <div class="card">
+                <h2>Schermopname</h2>
+
+                <div class="preview-container">
+                    <video id="previewVideo" autoplay muted playsinline></video>
+                    <div id="noPreview" class="no-preview">
+                        <p>Geen opname actief</p>
+                        <p class="hint">Klik op "Start analyse" om je scherm te delen en de analyse te starten</p>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button id="btnStart" class="btn btn-primary">▶ Start schermanalyse</button>
+                    <button id="btnStop"  class="btn btn-danger" disabled>■ Stop analyse</button>
+                </div>
+
+                <div class="settings">
+                    <label>
+                        Sample interval:
+                        <select id="sampleInterval">
+                            <option value="1000">Elke 1 seconde (nauwkeurig)</option>
+                            <option value="2000" selected>Elke 2 seconden (standaard)</option>
+                            <option value="5000">Elke 5 seconden (rustiger)</option>
+                        </select>
+                    </label>
+                    <label>
+                        Veranderingsdrempel:
+                        <select id="changeThreshold">
+                            <option value="5">Gevoelig — 5% verschil</option>
+                            <option value="10" selected>Normaal — 10% verschil</option>
+                            <option value="20">Grof — 20% verschil</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Live status -->
+            <div class="card">
+                <h2>Live Status</h2>
+
+                <div class="status-item">
+                    <span class="label">Status</span>
+                    <span id="statusText" class="value status-idle">Inactief</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Analysetijd</span>
+                    <span id="sessionDuration" class="value">00:00:00</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Frames geanalyseerd</span>
+                    <span id="frameCount" class="value">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Gedetecteerde segmenten</span>
+                    <span id="segmentCount" class="value">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Unieke schermstates</span>
+                    <span id="clusterCount" class="value">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="label">Herkende patronen</span>
+                    <span id="patternCount" class="value">0</span>
+                </div>
+
+                <div class="status-indicator">
+                    <div id="activityDot" class="dot dot-idle"></div>
+                    <span id="activityText">Wachten op schermopname…</span>
+                </div>
+            </div>
+
+            <!-- Export -->
+            <div class="card export-section">
+                <h2>Exporteer resultaten</h2>
+                <div class="export-buttons">
+                    <button id="btnExportJSON" class="btn btn-export" disabled>↓ Volledige analyse (JSON)</button>
+                    <button id="btnExportMD"   class="btn btn-export" disabled>↓ Werkinstructies (Markdown)</button>
+                    <button id="btnExportTXT"  class="btn btn-export" disabled>↓ Werkinstructies (TXT)</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ── RIGHT PANEL ── -->
+        <div class="right-panel">
+            <div class="card results-card">
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab active" data-tab="patterns">
+                        Patronen <span id="tabBadgePatterns"></span>
+                    </button>
+                    <button class="tab" data-tab="automation">Automatisering</button>
+                    <button class="tab" data-tab="instructions">Werkinstructies</button>
+                </div>
+
+                <!-- Tab: Patterns -->
+                <div id="tab-patterns" class="tab-content active">
+                    <div id="patternsSection">
+                        <div class="empty-state">
+                            <p>Nog geen patronen gedetecteerd.</p>
+                            <p class="hint">
+                                Start de analyse en voer dezelfde handelingen meerdere keren uit.
+                                Minimaal 2 herhalingen zijn nodig; voor betrouwbare resultaten: 3–5 herhalingen.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Automation -->
+                <div id="tab-automation" class="tab-content">
+                    <div id="automationSection">
+                        <div class="empty-state">
+                            <p>Nog geen automatiseringskansen.</p>
+                            <p class="hint">Worden zichtbaar zodra repetitieve patronen zijn herkend.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Instructions -->
+                <div id="tab-instructions" class="tab-content">
+                    <div id="instructionsSection">
+                        <div class="empty-state">
+                            <p>Nog geen werkinstructies gegenereerd.</p>
+                            <p class="hint">Worden automatisch aangemaakt op basis van gedetecteerde patronen.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </div><!-- /.main-layout -->
+
+    <!-- Hidden canvases for analysis -->
+    <!-- hashCanvas: 16×16 — used for perceptual hashing -->
+    <!-- analysisCanvas: 320×180 — reserved for future OCR integration -->
+    <canvas id="hashCanvas"     class="hidden" width="16"  height="16"></canvas>
+    <canvas id="analysisCanvas" class="hidden" width="320" height="180"></canvas>
+
+</div><!-- /#app -->
+
+<script src="analyzer.js"></script>
+<script src="exporter.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
