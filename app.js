@@ -290,21 +290,48 @@ window.generateInstructionFor = async function(patternId) {
     const pattern = analyzer.getPatterns().find(p => p.id === patternId);
     if (!pattern) return;
 
-    const btn = document.querySelector(`.btn-generate[data-id="${patternId}"]`);
-    if (btn) { btn.textContent = '⏳ Genereren…'; btn.disabled = true; }
+    const apiKey = sessionStorage.getItem('claudeApiKey');
+    if (!apiKey) {
+        notify('Voer eerst een Claude API-sleutel in onder "AI Instellingen" en klik op Opslaan.', 'error');
+        return;
+    }
+
+    // Show loading state on ALL buttons with this pattern id
+    document.querySelectorAll(`.btn-generate[data-id="${patternId}"]`).forEach(b => {
+        b.textContent = '⏳ Genereren…'; b.disabled = true;
+    });
 
     try {
         const prompt      = await buildAIPrompt(pattern);
         const instruction = await callClaudeAPI(prompt);
+
+        if (!instruction || !instruction.trim()) {
+            throw new Error('Lege reactie ontvangen van Claude. Probeer opnieuw.');
+        }
+
         analyzer.setPatternAIInstruction(patternId, instruction);
+
+        // Re-render both tabs so result is immediately visible
+        renderPatterns();
         renderInstructions();
+
         // Switch to instructions tab
         document.querySelector('.tab[data-tab="instructions"]')?.click();
+
+        notify('Werkinstructie gegenereerd! Zie het tabblad Werkinstructies.', 'info');
+
     } catch (e) {
-        notify(`AI-fout: ${e.message}`, 'error');
-        if (btn) { btn.textContent = '✨ Probeer opnieuw'; btn.disabled = false; }
+        let msg = e.message;
+        if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+            msg = 'Netwerkfout: controleer je internetverbinding. Als je de tool lokaal opent via file://, probeer dan localhost (python3 -m http.server 8080).';
+        }
+        notify(`AI-fout: ${msg}`, 'error');
+
+        // Re-enable buttons
+        document.querySelectorAll(`.btn-generate[data-id="${patternId}"]`).forEach(b => {
+            b.textContent = '✨ Probeer opnieuw'; b.disabled = false;
+        });
     }
-    if (btn) { btn.textContent = '↺ Opnieuw genereren'; btn.disabled = false; }
 };
 
 // ─── Start analysis ───────────────────────────────────────────────────────────
@@ -490,9 +517,21 @@ function renderPatterns() {
             <div class="pattern-actions">
                 <button class="btn-generate btn-sm" data-id="${p.id}"
                     onclick="generateInstructionFor('${p.id}')">
-                    ${p.aiInstruction ? '↺ Opnieuw genereren met AI' : '✨ Genereer werkinstructie met AI'}
+                    ${p.aiInstruction ? '↺ Opnieuw genereren' : '✨ Genereer werkinstructie met AI'}
                 </button>
             </div>
+            ${p.aiInstruction ? `
+            <div class="ai-inline-preview">
+                <div class="ai-inline-label">✨ AI-werkinstructie</div>
+                <div class="ai-inline-text">${
+                    p.aiInstruction
+                        .split('\n')
+                        .filter(l => l.trim())
+                        .slice(0, 12)
+                        .map(l => `<p>${escapeHtml(l)}</p>`)
+                        .join('')
+                }${p.aiInstruction.split('\n').filter(l=>l.trim()).length > 12 ? '<p class="ai-more">… (volledig in tabblad Werkinstructies)</p>' : ''}</div>
+            </div>` : ''}
         </div>`;
     }).join('');
 }

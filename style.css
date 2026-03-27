@@ -376,6 +376,32 @@ header h1 { font-size: 20px; font-weight: 700; }
     margin-bottom: 8px !important;
 }
 
+/* ── AI inline preview (in pattern card) ────────────────────────────────── */
+
+.ai-inline-preview {
+    margin-top: 12px;
+    border: 1px solid #4a3a20;
+    border-radius: 6px;
+    overflow: hidden;
+}
+.ai-inline-label {
+    background: #2a2000;
+    color: var(--ai-gold);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 5px 12px;
+    letter-spacing: 0.3px;
+}
+.ai-inline-text {
+    background: #ffffff;
+    padding: 12px 16px;
+    color: #1a1f2e;
+    font-size: 13px;
+    line-height: 1.7;
+}
+.ai-inline-text p { margin-bottom: 6px; }
+.ai-more { color: #7a859a; font-style: italic; font-size: 12px; }
+
 /* ── Export section ──────────────────────────────────────────────────────── */
 
 .export-buttons { display: flex; flex-direction: column; gap: 6px; }
